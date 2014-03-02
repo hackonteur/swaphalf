@@ -33,7 +33,7 @@
 int main (int argc, char **argv) {
 
 	int ret = EXIT_SUCCESS;
-	int x, y, new_x;
+	int x, y, new_x, new_y;
 	int actual_format_return;
 
 	unsigned long nitems_return;
@@ -84,6 +84,7 @@ int main (int argc, char **argv) {
 	// Determine maximised state
 	Bool isMaxVert = False;
 	Bool isMaxHorz = False;
+        Bool move_x;
 	XGetWindowProperty (disp, win, XInternAtom(disp, "_NET_WM_STATE", False),
 		0, 1024, False, XA_ATOM, &ret_atom, 
 		&actual_format_return, &nitems_return, &bytes_after_return, &data);
@@ -103,16 +104,50 @@ int main (int argc, char **argv) {
 	}
 	XFree(data);
 
-	// Calculate new X
-        // If the x center of the window is on the right side of the display
-        if (x + (activ_atr.width / 2) > (root_atr.width / 2)) {
-          v_printf("Right side\n");
-          new_x = (root_atr.width / 2) - (x + (activ_atr.width / 2) - (root_atr.width / 2  )) - (activ_atr.width / 2);
-        } else {
-          v_printf("Left side\n");
-          new_x = (root_atr.width / 2) + ((root_atr.width / 2) - (x + (activ_atr.width / 2))) - (activ_atr.width / 2);
+        if ((isMaxVert) || ((activ_atr.height + 90) > root_atr.height)) {
+            move_x = 1;
+        } else if ((isMaxHorz) || ((activ_atr.width + 20) > root_atr.width)) {
+            move_x = 0;
+        } else if (y + (activ_atr.height / 2) <= (root_atr.height / 2)) {
+          if (x + (activ_atr.width / 2) <= (root_atr.width / 2)) { // top-left
+            v_printf("Top left: move x\n");
+            move_x = 1;
+          } else { // top-right
+            v_printf("Top right: move y\n");
+            move_x = 0;
+          }
+        } else if (x + (activ_atr.width / 2) > (root_atr.width / 2)) { // bottom-right
+            v_printf("Bottom right: move x\n");
+          move_x = 1;
+        } else { // bottom-left
+          v_printf("Bottom left: move y\n");
+          move_x = 0;
         }
-	
+
+        
+
+        if (move_x == 1) {
+          new_y = y;
+          // Calculate new X
+          // If the x center of the window is on the right side of the display
+          if (x + (activ_atr.width / 2) > (root_atr.width / 2)) {
+            v_printf("Right side\n");
+            new_x = (root_atr.width / 2) - (x + (activ_atr.width / 2) - (root_atr.width / 2  )) - (activ_atr.width / 2);
+          } else {
+            v_printf("Left side\n");
+            new_x = (root_atr.width / 2) + ((root_atr.width / 2) - (x + (activ_atr.width / 2))) - (activ_atr.width / 2);
+          }
+        } else {
+          new_x = x;
+          // If the y center of the window is on the bottom side of the display
+          if (y + (activ_atr.height / 2) > (root_atr.height / 2)) {
+            v_printf("Bottom side\n");
+            new_y = (root_atr.height / 2) - (y + (activ_atr.height / 2) - (root_atr.height / 2  )) - (activ_atr.height / 2);
+          } else {
+            v_printf("Top side\n");
+            new_y = (root_atr.height / 2) + ((root_atr.height / 2) - (y + (activ_atr.height / 2))) - (activ_atr.height / 2);
+          }
+        }
 
 	// Ensure that the window fits in the new Screen
 	grflags = StaticGravity;
@@ -127,10 +162,10 @@ int main (int argc, char **argv) {
 		new_x = root_atr.width - activ_atr.width;
 	}
 
-	v_printf("%ux%u @ (%d,%d)\n", activ_atr.width, activ_atr.height, new_x, y);
+	v_printf("%ux%u @ (%d,%d)\n", activ_atr.width, activ_atr.height, new_x, new_y);
 	
 	// Only move x
-	grflags |= 0x100;
+        grflags |= (move_x) ? 0x100 : 0x200;
 
 	mask = SubstructureRedirectMask | SubstructureNotifyMask;
 	event.xclient.type = ClientMessage;
@@ -153,6 +188,7 @@ int main (int argc, char **argv) {
 	event.xclient.message_type = XInternAtom(disp, "_NET_MOVERESIZE_WINDOW", False);
 	event.xclient.data.l[0] = grflags;
 	event.xclient.data.l[1] = (unsigned long)new_x;
+        event.xclient.data.l[2] = (unsigned long)new_y;
 	XSendEvent(disp, DefaultRootWindow(disp), False, mask, &event);
 
 
