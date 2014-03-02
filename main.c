@@ -25,7 +25,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 
-#define verbose 0
+#define verbose 1
 #define v_printf(...) if (verbose) { \
     fprintf(stderr, __VA_ARGS__); \
 }
@@ -104,8 +104,14 @@ int main (int argc, char **argv) {
 	XFree(data);
 
 	// Calculate new X
-	new_x = ( 2*x + activ_atr.width - root_atr.width > 0 ) ? 
-		x - root_atr.width/2 : x + root_atr.width/2;
+        // If the x center of the window is on the right side of the display
+        if (x + (activ_atr.width / 2) > (root_atr.width / 2)) {
+          v_printf("Right side\n");
+          new_x = (root_atr.width / 2) - (x + (activ_atr.width / 2) - (root_atr.width / 2  )) - (activ_atr.width / 2);
+        } else {
+          v_printf("Left side\n");
+          new_x = (root_atr.width / 2) + ((root_atr.width / 2) - (x + (activ_atr.width / 2))) - (activ_atr.width / 2);
+        }
 	
 
 	// Ensure that the window fits in the new Screen
